@@ -1,0 +1,54 @@
+# Python cache & build
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# FastAPI / Uvicorn related
+*.db
+*.sqlite3
+instance/
+*.pid
+
+# Static files generated or uploaded
+/staticfiles/
+/media/
+/uploads/
+
+# Node / frontend build outputs (if you use npm for CSS/JS bundling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Cached API docs
+openapi.json

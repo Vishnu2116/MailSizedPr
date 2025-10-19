@@ -1,0 +1,162 @@
+<!-- app/templates/privacy.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-S5S8LF8NDE"></script>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="Cache-Control" content="no-store"/>
+  <title>Privacy Policy – MailSized</title>
+  <meta name="description" content="MailSized Privacy Policy: what we collect, how we use it, file retention and deletion, payments, security, and your choices.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+  {{ adsense_tag|safe }}
+  <!-- Structured data for SEO -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"PrivacyPolicy",
+    "name":"MailSized Privacy Policy",
+    "datePublished":"2025-08-18",
+    "dateModified":"2025-08-18",
+    "publisher":{"@type":"Organization","name":"MailSized"}
+  }
+  </script>
+</head>
+<body id="pageRoot" data-ga-id="G-S5S8LF8NDE">
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon"><i class="fas fa-video"></i></div>
+        <h1>MailSized</h1>
+      </div>
+      <p>Your videos, handled with care. Clear retention and no resale of data.</p>
+      <nav class="top-nav" aria-label="Main">
+          <a href="/" class="top-nav-link">Home</a>
+          <span class="sep">|</span>
+          <a href="/how-it-works" class="top-nav-link">How it Works</a>
+          <span class="sep">|</span>
+          <a href="/blogs" class="top-nav-link">Blogs</a>
+          <span class="sep">|</span>
+          <a href="/privacy" class="top-nav-link" aria-current="page">Privacy</a>
+          <span class="sep">|</span>
+          <a href="/contact" class="top-nav-link">Contact Us</a>
+      </nav>
+    </header>
+
+    <div class="card-container">
+      <div class="main-card">
+        <div class="step-content">
+          <h2 class="step-title"><i class="fas fa-user-shield"></i> Overview</h2>
+          <p class="file-meta">Effective date: August 18, 2025</p>
+          <p>
+            This Privacy Policy explains what information MailSized (“we”, “us”) collects, how we use it, and
+            the choices you have. We designed MailSized with minimal data collection and short retention by default.
+          </p>
+
+          <h2 class="step-title"><i class="fas fa-database"></i> What we collect</h2>
+          <ul style="margin:0 0 16px 18px; line-height:1.6;">
+            <li><strong>Account/contact:</strong> Your email address (required) to send your download link and updates.</li>
+            <li><strong>Files you upload:</strong> Your source video and the compressed output. We also read technical metadata (e.g., duration, resolution) to perform compression.</li>
+            <li><strong>Payment:</strong> Payments are processed by Stripe. We never see full card numbers.</li>
+            <li><strong>Usage & logs:</strong> Basic HTTP logs (IP, user agent, timings) for reliability, security, and abuse prevention.</li>
+            <li><strong>Support:</strong> If you contact us, we’ll collect the details you submit (email, subject, message).</li>
+          </ul>
+
+          <h2 class="step-title"><i class="fas fa-cogs"></i> How we use information</h2>
+          <ul style="margin:0 0 16px 18px; line-height:1.6;">
+            <li>Compress and deliver your video according to the email provider target you choose.</li>
+            <li>Send your download link and transactional notifications.</li>
+            <li>Operate, protect, and improve the service (monitoring, debugging, preventing abuse/fraud).</li>
+            <li>Respond to support requests.</li>
+          </ul>
+
+          <h2 class="step-title"><i class="fas fa-trash-alt"></i> File retention & deletion</h2>
+          <p>
+            We automatically delete the uploaded source and compressed output after the download window
+            (about <strong>30 minutes</strong> by default). This is managed by our job cleanup process. If you need an exception for troubleshooting,
+            contact us before the window ends.
+          </p>
+
+          <h2 class="step-title"><i class="fas fa-credit-card"></i> Payments</h2>
+          <p>
+            We use Stripe to process payments. Your payment details are handled by Stripe and do not pass through our servers.
+            See Stripe’s privacy documentation for more information.
+          </p>
+
+          <h2 class="step-title"><i class="fas fa-share-alt-slash"></i> Sharing</h2>
+          <p>
+            We do <strong>not</strong> sell or rent your personal information. We share data only as needed to operate the service
+            (e.g., payments with Stripe, email delivery with Mailgun/SMTP), comply with law, or protect our rights and users.
+          </p>
+
+          <h2 class="step-title"><i class="fas fa-lock"></i> Security</h2>
+          <ul style="margin:0 0 16px 18px; line-height:1.6;">
+            <li>Transport encryption (HTTPS) is required.</li>
+            <li>Optional Stripe webhook signature verification (enabled when configured).</li>
+            <li>Security headers set to reduce common risks (X-Content-Type-Options, Referrer-Policy, etc.).</li>
+            <li>Short file retention by default; automated cleanup tasks run post-delivery.</li>
+          </ul>
+
+          <h2 class="step-title"><i class="fas fa-cookie-bite"></i> Cookies & analytics</h2>
+          <p>
+            We aim to operate with minimal cookies. If ad placements or performance monitoring are enabled in the future,
+            we will update this page and provide any required consent tools.
+          </p>
+
+          <h2 class="step-title"><i class="fas fa-user-check"></i> Your choices & rights</h2>
+          <ul style="margin:0 0 16px 18px; line-height:1.6;">
+            <li>You can request deletion of support correspondence.</li>
+            <li>To request access or deletion for logs associated with your activity, contact us; we’ll verify your request.</li>
+            <li>You can opt out of non-essential emails (we only send transactional messages by default).</li>
+          </ul>
+
+          <h2 class="step-title"><i class="fas fa-sync-alt"></i> Changes</h2>
+          <p>
+            We may update this policy to reflect product or legal changes. We’ll adjust the “Effective date” and
+            post the updated version here.
+          </p>
+
+          <h2 class="step-title"><i class="fas fa-envelope-open"></i> Contact</h2>
+          <p>
+            Questions? <a href="/contact">Contact us</a> and we’ll get back to you.
+          </p>
+
+          <p class="file-meta" style="margin-top:14px;"><em>Effective date: August 18, 2025</em></p>
+        </div>
+      </div>
+
+      <aside class="info-card">
+        <h2><i class="fas fa-info-circle"></i> Summary (quick read)</h2>
+        <ul style="margin:0 0 0 18px; line-height:1.6;">
+          <li>Email required to deliver your download link.</li>
+          <li>Files auto-delete after ~30 minutes.</li>
+          <li>Payments via Stripe; card data not stored by us.</li>
+          <li>No selling of personal data.</li>
+          <li>Security headers & short retention by design.</li>
+        </ul>
+        <div id="ad-slot-sidebar" class="ad-slot" data-ad-slot="sidebar-300x250">
+          <div class="ad-placeholder">Sponsored • placeholder</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script>
+    if (window.adsbygoogle) {
+      const el = document.getElementById('ad-slot-sidebar');
+      if (el){
+        const ins = document.createElement('ins');
+        ins.className = 'adsbygoogle';
+        ins.style.display = 'block';
+        ins.setAttribute('data-ad-client', '{{ adsense_client_id }}');
+        ins.setAttribute('data-ad-slot', 'sidebar-300x250');
+        ins.setAttribute('data-full-width-responsive', 'true');
+        el.innerHTML = ''; el.appendChild(ins);
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      }
+    }
+  </script>
+</body>
+<script defer src="/static/script.js?v=2025-08-14-8"></script>
+</html>

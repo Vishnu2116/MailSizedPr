@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MailSized - Admin Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.6;
+    }
+
+    /* Navigation */
+    .navbar {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .logout-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 0.5rem 1.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #dc2626;
+    }
+
+    /* Layout */
+    .container {
+      display: flex;
+      min-height: calc(100vh - 73px);
+    }
+
+    .sidebar {
+      width: 250px;
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+      padding: 2rem 0;
+      position: sticky;
+      top: 73px;
+      height: calc(100vh - 73px);
+      overflow-y: auto;
+    }
+
+    .sidebar-link {
+      display: block;
+      padding: 0.75rem 2rem;
+      color: #64748b;
+      text-decoration: none;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .sidebar-link:hover,
+    .sidebar-link.active {
+      background: #f1f5f9;
+      color: #3b82f6;
+      border-left-color: #3b82f6;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Cards */
+    .card {
+      background: #ffffff;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-header {
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card.blue {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .stat-card.green {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .stat-card.orange {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+
+    .tab.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    .tab:hover {
+      color: #3b82f6;
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-group label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #475569;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      padding: 0.5rem 1rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      min-width: 150px;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Table */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 0.5rem;
+      border: 1px solid #e2e8f0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f8fafc;
+    }
+
+    th {
+      text-align: left;
+      padding: 1rem;
+      font-weight: 600;
+      color: #475569;
+      font-size: 0.875rem;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.875rem;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    .link-text {
+      color: #3b82f6;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .link-text:hover {
+      text-decoration: underline;
+    }
+
+    /* Status Badge */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.processing {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge.completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge.used {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge.unused {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-secondary {
+      background: #64748b;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    /* Generated Token Display */
+    .token-display {
+      background: #f1f5f9;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .token-display.show {
+      display: block;
+    }
+
+    .token-code {
+      background: #ffffff;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      color: #3b82f6;
+      margin: 0.5rem 0;
+      word-break: break-all;
+      border: 1px solid #cbd5e1;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #64748b;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.25rem;
+    }
+
+    .close-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .detail-value {
+      color: #0f172a;
+      text-align: right;
+    }
+
+    /* Chart */
+    .chart-container {
+      height: 300px;
+      margin-top: 1.5rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      padding: 1rem;
+      gap: 0.5rem;
+    }
+
+    .chart-bar {
+      flex: 1;
+      background: linear-gradient(to top, #3b82f6, #60a5fa);
+      border-radius: 0.25rem 0.25rem 0 0;
+      position: relative;
+      min-height: 20px;
+      transition: all 0.3s;
+    }
+
+    .chart-bar:hover {
+      opacity: 0.8;
+    }
+
+    .chart-label {
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    .chart-value {
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .sidebar {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 1rem;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .card {
+        padding: 1rem;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .filter-group input,
+      .filter-group select {
+        min-width: 100%;
+      }
+
+      .table-container {
+        font-size: 0.75rem;
+      }
+
+      th,
+      td {
+        padding: 0.5rem;
+      }
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      MailSized
+    </div>
+    <button class="logout-btn" onclick="alert('Logout functionality')">Logout</button>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="#" class="sidebar-link active" onclick="showSection('dashboard')">📊 Dashboard</a>
+      <a href="#" class="sidebar-link" onclick="showSection('jobs')">📋 Jobs</a>
+      <a href="#" class="sidebar-link" onclick="showSection('revenue')">💰 Revenue</a>
+      <a href="#" class="sidebar-link" onclick="showSection('tokens')">🔑 Promo Codes</a>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Dashboard Section -->
+      <div id="dashboard" class="section active">
+        <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 2rem;">Dashboard Overview</h1>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-label">Total Jobs Processed</div>
+            <div class="stat-value">12,458</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value">$45,890</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-label">Active Promo Codes</div>
+            <div class="stat-value">47</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Completed Today</div>
+            <div class="stat-value">234</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jobs Section -->
+      <div id="jobs" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Job Analytics</h2>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tabs">
+            <button class="tab active" onclick="switchTab(this, 'all-time')">All-Time</button>
+            <button class="tab" onclick="switchTab(this, 'daily')">Daily</button>
+            <button class="tab" onclick="switchTab(this, 'weekly')">Weekly</button>
+            <button class="tab" onclick="switchTab(this, 'monthly')">Monthly</button>
+            <button class="tab" onclick="switchTab(this, 'yearly')">Yearly</button>
+          </div>
+
+          <!-- Date Filters -->
+          <div class="filters">
+            <div class="filter-group">
+              <label>Start Date</label>
+              <input type="date" id="startDate">
+            </div>
+            <div class="filter-group">
+              <label>End Date</label>
+              <input type="date" id="endDate">
+            </div>
+            <div class="filter-group">
+              <label>Status</label>
+              <select>
+                <option>All</option>
+                <option>Pending</option>
+                <option>Processing</option>
+                <option>Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Jobs Table -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>File Name</th>
+                  <th>Uploaded By</th>
+                  <th>Date of Upload</th>
+                  <th>Status</th>
+                  <th>Output Size</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-001')">JOB-001</a></td>
+                  <td>newsletter_march.html</td>
+                  <td>user@example.com</td>
+                  <td>2024-03-15 10:30 AM</td>
+                  <td><span class="badge completed">Completed</span></td>
+                  <td>18.5 MB</td>
+                </tr>
+                <tr>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-002')">JOB-002</a></td>
+                  <td>campaign_email.html</td>
+                  <td>anonymous</td>
+                  <td>2024-03-15 09:45 AM</td>
+                  <td><span class="badge processing">Processing</span></td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-003')">JOB-003</a></td>
+                  <td>promo_template.html</td>
+                  <td>admin@mailsized.com</td>
+                  <td>2024-03-14 04:20 PM</td>
+                  <td><span class="badge completed">Completed</span></td>
+                  <td>22.3 MB</td>
+                </tr>
+                <tr>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-004')">JOB-004</a></td>
+                  <td>weekly_digest.html</td>
+                  <td>editor@company.com</td>
+                  <td>2024-03-14 02:15 PM</td>
+                  <td><span class="badge pending">Pending</span></td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-005')">JOB-005</a></td>
+                  <td>flash_sale_email.html</td>
+                  <td>marketing@store.com</td>
+                  <td>2024-03-14 11:30 AM</td>
+                  <td><span class="badge completed">Completed</span></td>
+                  <td>15.8 MB</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue Section -->
+      <div id="revenue" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Revenue Insights</h2>
+          </div>
+
+          <!-- Stats -->
+          <div class="stats-grid">
+            <div class="stat-card green">
+              <div class="stat-label">Total Revenue (All-Time)</div>
+              <div class="stat-value">$45,890</div>
+            </div>
+            <div class="stat-card blue">
+              <div class="stat-label">This Month</div>
+              <div class="stat-value">$8,450</div>
+            </div>
+            <div class="stat-card orange">
+              <div class="stat-label">This Week</div>
+              <div class="stat-value">$2,120</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Today</div>
+              <div class="stat-value">$385</div>
+            </div>
+          </div>
+
+          <!-- Date Range -->
+          <div class="filters">
+            <div class="filter-group">
+              <label>Start Date</label>
+              <input type="date" id="revStartDate">
+            </div>
+            <div class="filter-group">
+              <label>End Date</label>
+              <input type="date" id="revEndDate">
+            </div>
+          </div>
+
+          <!-- Revenue Chart -->
+          <h3 style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 600;">Revenue Over Time</h3>
+          <div class="chart-container">
+            <div class="chart-bar" style="height: 60%;">
+              <div class="chart-value">$5.2K</div>
+              <div class="chart-label">Mon</div>
+            </div>
+            <div class="chart-bar" style="height: 80%;">
+              <div class="chart-value">$6.8K</div>
+              <div class="chart-label">Tue</div>
+            </div>
+            <div class="chart-bar" style="height: 45%;">
+              <div class="chart-value">$3.9K</div>
+              <div class="chart-label">Wed</div>
+            </div>
+            <div class="chart-bar" style="height: 90%;">
+              <div class="chart-value">$8.1K</div>
+              <div class="chart-label">Thu</div>
+            </div>
+            <div class="chart-bar" style="height: 70%;">
+              <div class="chart-value">$6.2K</div>
+              <div class="chart-label">Fri</div>
+            </div>
+            <div class="chart-bar" style="height: 55%;">
+              <div class="chart-value">$4.7K</div>
+              <div class="chart-label">Sat</div>
+            </div>
+            <div class="chart-bar" style="height: 40%;">
+              <div class="chart-value">$3.5K</div>
+              <div class="chart-label">Sun</div>
+            </div>
+          </div>
+
+          <!-- Top Promo Codes -->
+          <h3 style="margin-top: 3rem; margin-bottom: 1rem; font-weight: 600;">Top Promo Codes by Revenue</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Promo Code</th>
+                  <th>Total Uses</th>
+                  <th>Revenue Impact</th>
+                  <th>Discount Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>SUMMER50</strong></td>
+                  <td>342</td>
+                  <td>$12,450</td>
+                  <td>50%</td>
+                </tr>
+                <tr>
+                  <td><strong>WELCOME20</strong></td>
+                  <td>567</td>
+                  <td>$9,830</td>
+                  <td>20%</td>
+                </tr>
+                <tr>
+                  <td><strong>FLASH30</strong></td>
+                  <td>234</td>
+                  <td>$7,120</td>
+                  <td>30%</td>
+                </tr>
+                <tr>
+                  <td><strong>LOYALTY10</strong></td>
+                  <td>789</td>
+                  <td>$5,340</td>
+                  <td>10%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Promo Codes Section -->
+      <div id="tokens" class="section">
+        <!-- Generator Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Generate One-Time Promo Code</h2>
+          </div>
+
+          <form onsubmit="generatePromoCode(event)">
+            <div class="form-group">
+              <label>Promo Code Name *</label>
+              <input type="text" id="promoName" placeholder="e.g., OCT50" required>
+            </div>
+
+            <div class="form-group">
+              <label>Expiry Date (Optional)</label>
+              <input type="date" id="promoExpiry">
+            </div>
+
+            <div class="form-group">
+              <label>Usage Limit</label>
+              <input type="number" id="usageLimit" value="1" min="1">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Generate Token</button>
+          </form>
+
+          <div class="token-display" id="tokenDisplay">
+            <h3 style="margin-bottom: 1rem; font-weight: 600;">Generated Token</h3>
+            <div class="token-code" id="generatedToken"></div>
+            <button class="btn btn-secondary" onclick="copyToken()">Copy to Clipboard</button>
+          </div>
+        </div>
+
+        <!-- Usage Tracker Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Promo Code Usage Tracker</h2>
+          </div>
+
+          <!-- Filters -->
+          <div class="filters">
+            <div class="filter-group">
+              <label>Search Token</label>
+              <input type="text" placeholder="Search by token name..." id="tokenSearch">
+            </div>
+            <div class="filter-group">
+              <label>Status Filter</label>
+              <select id="statusFilter">
+                <option>All</option>
+                <option>Used</option>
+                <option>Unused</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Sort By</label>
+              <select id="sortFilter">
+                <option>Most Recent</option>
+                <option>Oldest First</option>
+                <option>Alphabetical</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tokens Table -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Token Name</th>
+                  <th>Status</th>
+                  <th>Used On</th>
+                  <th>Used By</th>
+                  <th>Job ID</th>
+                  <th>Expiry</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>OCT50-A7B2C9</strong></td>
+                  <td><span class="badge used">Used</span></td>
+                  <td>2024-03-15 10:30 AM</td>
+                  <td>user@example.com</td>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-001')">JOB-001</a></td>
+                  <td>2024-12-31</td>
+                </tr>
+                <tr>
+                  <td><strong>WELCOME-D4E8F2</strong></td>
+                  <td><span class="badge unused">Unused</span></td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>2024-06-30</td>
+                </tr>
+                <tr>
+                  <td><strong>FLASH-G7H3I9</strong></td>
+                  <td><span class="badge used">Used</span></td>
+                  <td>2024-03-14 04:20 PM</td>
+                  <td>admin@mailsized.com</td>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-003')">JOB-003</a></td>
+                  <td>2024-03-31</td>
+                </tr>
+                <tr>
+                  <td><strong>SPRING25-J5K1L8</strong></td>
+                  <td><span class="badge unused">Unused</span></td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>2024-05-15</td>
+                </tr>
+                <tr>
+                  <td><strong>LOYALTY-M2N7O4</strong></td>
+                  <td><span class="badge used">Used</span></td>
+                  <td>2024-03-14 11:30 AM</td>
+                  <td>marketing@store.com</td>
+                  <td><a href="#" class="link-text" onclick="openJobModal('JOB-005')">JOB-005</a></td>
+                  <td>2024-12-31</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Job Details Modal -->
+  <div id="jobModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Job Details</h2>
+        <button class="close-btn" onclick="closeJobModal()">×</button>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Job ID:</span>
+        <span class="detail-value" id="modalJobId">JOB-001</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">File Name:</span>
+        <span class="detail-value">newsletter_march.html</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Uploaded By:</span>
+        <span class="detail-value">user@example.com</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value"><span class="badge completed">Completed</span></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Input S3 Path:</span>
+        <span class="detail-value"
+          style="word-break: break-all;">s3://mailsized-input/2024/03/newsletter_march.html</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Output S3 Path:</span>
+        <span class="detail-value"
+          style="word-break: break-all;">s3://mailsized-output/2024/03/newsletter_march_compressed.html</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Original Size:</span>
+        <span class="detail-value">45.2 MB</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Compressed Size:</span>
+        <span class="detail-value">18.5 MB (59% reduction)</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Upload Time:</span>
+        <span class="detail-value">2024-03-15 10:25:33 AM</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Process Time:</span>
+        <span class="detail-value">4.2 seconds</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Download Count:</span>
+        <span class="detail-value">3 times</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Promo Code Used:</span>
+        <span class="detail-value">WELCOME20</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Payment Status:</span>
+        <span class="detail-value"><span class="badge completed">Paid</span></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navigation Functions
+    function showSection(sectionId) {
+      // Hide all sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      // Show selected section
+      document.getElementById(sectionId).classList.add('active');
+
+      // Update sidebar active state
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.classList.remove('active');
+      });
+      event.target.classList.add('active');
+    }
+
+    // Tab Switching
+    function switchTab(element, period) {
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      element.classList.add('active');
+      console.log('Switched to:', period);
+    }
+
+    // Modal Functions
+    function openJobModal(jobId) {
+      document.getElementById('modalJobId').textContent = jobId;
+      document.getElementById('jobModal').classList.add('show');
+    }
+
+    function closeJobModal() {
+      document.getElementById('jobModal').classList.remove('show');
+    }
+
+    // Close modal on outside click
+    document.getElementById('jobModal').addEventListener('click', function (e) {
+      if (e.target === this) {
+        closeJobModal();
+      }
+    });
+
+    // Promo Code Generator
+    function generatePromoCode(event) {
+      event.preventDefault();
+
+      const promoName = document.getElementById('promoName').value;
+      const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const generatedCode = `${promoName}-${randomSuffix}`;
+
+      document.getElementById('generatedToken').textContent = generatedCode;
+      document.getElementById('tokenDisplay').classList.add('show');
+    }
+
+    function copyToken() {
+      const tokenText = document.getElementById('generatedToken').textContent;
+      navigator.clipboard.writeText(tokenText).then(() => {
+        alert('Token copied to clipboard!');
+      }).catch(() => {
+        alert('Failed to copy token');
+      });
+    }
+
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDate').value = today;
+    document.getElementById('endDate').value = today;
+    document.getElementById('revStartDate').value = today;
+    document.getElementById('revEndDate').value = today;
+  </script>
+</body>
+
+</html>
