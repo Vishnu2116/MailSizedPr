@@ -15,7 +15,7 @@ import os
 # ────────────────────────────────
 # Import Routers
 # ────────────────────────────────
-from app.routes import upload, pay, stripe_webhook, devtest, download
+from app.routes import upload, pay, stripe_webhook, devtest, download, update_email
 
 # ────────────────────────────────
 # Initialize FastAPI
@@ -56,6 +56,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # ────────────────────────────────
 app.include_router(upload.router)
 app.include_router(pay.router)
+app.include_router(update_email.router)
 app.include_router(stripe_webhook.router)
 app.include_router(devtest.router)
 app.include_router(download.router)

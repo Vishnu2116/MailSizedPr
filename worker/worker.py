@@ -61,7 +61,7 @@ def _preexec_ulimits():
 
 def percent_from_out_time_ms(line: str, duration: float) -> float:
     """Parse FFmpeg progress lines for % completion."""
-    m = re.match(r"out_time_ms=(\d+)", line.strip())
+    m = re.match(r"out_time_ms=(\\d+)", line.strip())
     if m and duration > 0:
         ms = int(m.group(1))
         return min(99.0, (ms / 1_000_000.0) / duration * 100.0)
@@ -92,8 +92,27 @@ async def compress_video(job: dict):
     duration = job["duration_sec"]
     size_bytes = job["size_bytes"]
     provider = job["provider"]
-    email = job.get("email", "")
     priority = job.get("priority", False)
+
+    # ✅ Always try to fetch real email from DB if missing
+    email = job.get("email") or ""
+    if not email:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT email FROM jobs WHERE upload_id=%s", (upload_id,))
+                row = cur.fetchone()
+                if row and row.get("email"):
+                    email = row["email"]
+                    print(f"📧 Retrieved email from DB: {email}")
+        except Exception as e:
+            print(f"⚠️ Failed to fetch email from DB: {e}")
+
+    # Final fallback
+    if not email:
+        email = "noemail@mailsized.com"
+
+    print(f"🧾 Job data received: {job}")
+    print(f"📧 Using email: {email}")
 
     target_bytes = choose_target(provider, size_bytes)
     v_kbps, cap = email_target_bitrates(duration, target_bytes)
@@ -184,12 +203,12 @@ async def compress_video(job: dict):
 
         print(f"✅ Job {upload_id} completed and uploaded to {OUTPUT_BUCKET}")
 
-        # ✅ Send email notification (SES)
+        # ✅ Send email notification (SMTP/Mailgun)
         if email and "@" in email:
             try:
                 send_output_email(email, download_url, filename)
             except Exception as e:
-                print(f"❌ SES email failed: {e}")
+                print(f"❌ Email send failed: {e}")
 
     except Exception as e:
         print(f"❌ Compression failed: {e}")

@@ -9,15 +9,18 @@ function fmtBytes(n) {
   if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
+
 function fmtDuration(sec) {
   if (!Number.isFinite(sec) || sec <= 0) return "0:00 min";
   const m = Math.floor(sec / 60),
     s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")} min`;
 }
+
 function setTextSafe(el, txt) {
   if (el) el.textContent = txt;
 }
+
 function setStep(active) {
   const steps = [$("step1"), $("step2"), $("step3"), $("step4")].filter(
     Boolean
@@ -52,16 +55,6 @@ const state = {
     priceCents: 0,
   },
 };
-
-function highlightProviderColumn(provider) {
-  const cols = qsa("[data-col]");
-  cols.forEach((el) => {
-    el.classList.toggle(
-      "is-selected",
-      el.getAttribute("data-col") === provider
-    );
-  });
-}
 
 function calcTotals() {
   const baseEl = $("basePrice");
@@ -104,35 +97,17 @@ function calcTotals() {
   setTextSafe(taxEl, `$${tax.toFixed(2)}`);
   setTextSafe(totEl, `$${total.toFixed(2)}`);
 
-  const tierFor = state.uploadId
-    ? state.sizeBytes <= T1_MAX
-      ? 0
-      : state.sizeBytes <= T2_MAX
-      ? 1
-      : 2
-    : 0;
-  const priAdd = $("priority")?.checked ? UPSALE.priority : 0;
-  const traAdd = $("transcript")?.checked ? UPSALE.transcript : 0;
-
-  ["gmail", "outlook", "other"].forEach((p) => {
-    const baseP = PRICE_MATRIX[p][tierFor];
-    const subtotalP = baseP + priAdd + traAdd;
-    const taxP = +(subtotalP * 0.1).toFixed(2);
-    const totalP = +(subtotalP + taxP).toFixed(2);
-    const cellId =
-      p === "gmail"
-        ? "ptTotalGmail"
-        : p === "outlook"
-        ? "ptTotalOutlook"
-        : "ptTotalOther";
-    setTextSafe($(cellId), `$${totalP.toFixed(2)}`);
-  });
-
   const btn = $("processButton");
   if (btn)
     btn.innerHTML = `<i class="fas fa-credit-card"></i> Pay &amp; Compress ($${total.toFixed(
       2
     )})`;
+
+  // Highlight totals by provider in the small "Totals" table
+  ["gmail", "outlook", "other"].forEach((prov) => {
+    const el = $(`ptTotal${prov.charAt(0).toUpperCase() + prov.slice(1)}`);
+    if (el) el.style.fontWeight = prov === provider ? "700" : "400";
+  });
 }
 
 function wireUpload() {
@@ -177,6 +152,31 @@ function wireUpload() {
   });
 }
 
+function wireProviderSelection() {
+  const providerButtons = qsa(".provider-card");
+  if (!providerButtons.length) return;
+
+  providerButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      providerButtons.forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+
+      const provider = btn.dataset.provider || "gmail";
+      state.provider = provider;
+
+      // Highlight active provider column in pricing table
+      qsa("[data-col]").forEach((el) => {
+        el.style.background =
+          el.getAttribute("data-col") === provider ? "#eef6ff" : "";
+        el.style.fontWeight =
+          el.getAttribute("data-col") === provider ? "600" : "400";
+      });
+
+      calcTotals();
+    });
+  });
+}
+
 function setUploadProgress(pct, note = "Uploading…") {
   const box = $("uploadProgress");
   const fill = $("uploadFill");
@@ -200,7 +200,6 @@ async function handleFile(file) {
   setTextSafe($("fileDuration"), "probing…");
   if ($("fileInfo")) $("fileInfo").style.display = "";
 
-  // Get duration with a video element (approximate)
   const dur = await new Promise((resolve) => {
     const v = document.createElement("video");
     v.preload = "metadata";
@@ -209,12 +208,13 @@ async function handleFile(file) {
     v.src = URL.createObjectURL(file);
   });
 
+  const email = $("userEmail")?.value?.trim() || "noemail@mailsized.com";
   const payload = {
     filename: file.name,
     size_bytes: file.size,
     duration_sec: dur,
     content_type: file.type || "video/mp4",
-    email: $("userEmail")?.value?.trim() || "noemail@mailsized.com",
+    email,
   };
 
   const res = await fetch("/upload", {
@@ -224,24 +224,18 @@ async function handleFile(file) {
   });
 
   const data = await res.json();
-  if (!data.ok) {
-    return showError(data.detail || "Upload request failed");
-  }
+  if (!data.ok) return showError(data.detail || "Upload request failed");
 
   state.uploadId = data.upload_id;
   state.sizeBytes = file.size;
   state.durationSec = dur;
 
-  // Upload to S3
   const s3UploadRes = await fetch(data.presigned_url, {
     method: "PUT",
     headers: { "Content-Type": file.type },
     body: file,
   });
-
-  if (!s3UploadRes.ok) {
-    return showError("Upload to S3 failed.");
-  }
+  if (!s3UploadRes.ok) return showError("Upload to S3 failed.");
 
   setUploadProgress(100, "Upload complete");
   setTextSafe($("fileDuration"), fmtDuration(dur));
@@ -249,26 +243,20 @@ async function handleFile(file) {
   calcTotals();
 }
 
-function wireProviders() {
-  const list = $("providerList") || qs(".providers");
-  if (!list) return;
-  list.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-provider]");
-    if (!btn) return;
-    state.provider = (
-      btn.getAttribute("data-provider") || "gmail"
-    ).toLowerCase();
-    qsa("[data-provider]", list).forEach((n) => {
-      n.classList.toggle("selected", n === btn);
-    });
-    calcTotals();
-  });
-  $("priority")?.addEventListener("change", calcTotals);
-  $("transcript")?.addEventListener("change", calcTotals);
-}
-
 function validEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");
+}
+
+async function syncEmail(uploadId, email) {
+  try {
+    await fetch("/update_email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ upload_id: uploadId, email }),
+    });
+  } catch (err) {
+    console.warn("⚠️ Email sync failed:", err);
+  }
 }
 
 function wireCheckout() {
@@ -285,6 +273,8 @@ function wireCheckout() {
     if (!$("agree")?.checked)
       return showError("Please accept the Terms & Conditions.");
 
+    await syncEmail(state.uploadId, email);
+
     const coupon = $("couponInput")?.value?.trim() || "";
     calcTotals();
 
@@ -296,7 +286,6 @@ function wireCheckout() {
       transcript: !!$("transcript")?.checked,
     };
 
-    // ───── DEVTEST COUPON ─────
     if (coupon.toUpperCase() === "DEVTEST") {
       try {
         const res = await fetch("/devtest", {
@@ -304,10 +293,7 @@ function wireCheckout() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(devPayload),
         });
-
         const data = await res.json();
-        console.log("✅ DEVTEST response:", data);
-
         if (data.ok) {
           setStep(2);
           $("postPaySection").style.display = "";
@@ -315,14 +301,12 @@ function wireCheckout() {
         } else {
           showError(data?.error || data?.detail || "DEVTEST failed.");
         }
-      } catch (err) {
-        console.error(err);
+      } catch {
         showError("DEVTEST failed. Try again.");
       }
       return;
     }
 
-    // ───── FREE TIER (< 50 MB) ─────
     if (state.sizeBytes <= 50 * 1024 * 1024) {
       try {
         const res = await fetch("/devtest", {
@@ -330,7 +314,6 @@ function wireCheckout() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(devPayload),
         });
-
         const data = await res.json();
         if (data.ok) {
           setStep(2);
@@ -341,14 +324,12 @@ function wireCheckout() {
             data?.error || data?.detail || "Free-tier compression failed."
           );
         }
-      } catch (err) {
-        console.error(err);
+      } catch {
         showError("Free-tier job failed. Try again.");
       }
       return;
     }
 
-    // ───── STRIPE PAYMENT ─────
     const payload = {
       file_key: state.uploadId,
       provider: state.provider,
@@ -388,53 +369,29 @@ function wireCheckout() {
   });
 }
 
-function resumeIfPaid() {
-  const root = $("pageRoot");
-  const paid = root?.getAttribute("data-paid") === "1";
-  const jobId = root?.getAttribute("data-job-id") || "";
-
-  if (!paid || !jobId) return;
-  const post = $("postPaySection");
-  if (post) post.style.display = "";
-  setStep(2);
-  startSSE(jobId);
-}
-
 function revealDownload(url) {
   const dlLink = $("downloadLink");
   const downloadSection = $("downloadSection");
   const emailNote = $("emailNote");
   const progressNote = $("progressNote");
 
-  // Safety check
-  if (!url) {
-    showError("Download link unavailable. Please refresh or try again.");
-    return;
-  }
+  if (!url) return showError("Download link unavailable. Please refresh.");
 
-  // Reveal and configure the download link
   if (dlLink) {
-    dlLink.href = url; // full presigned S3 link
-    dlLink.target = "_blank"; // open in new tab (optional)
-    dlLink.download = ""; // prompt save dialog when possible
+    dlLink.href = url;
+    dlLink.target = "_blank";
+    dlLink.download = "";
   }
 
-  // Show the download section and email note
   if (downloadSection) downloadSection.style.display = "block";
   if (emailNote) emailNote.style.display = "";
-
-  // Update progress and step
   if (progressNote)
     progressNote.textContent = "✅ Compression Complete! Ready to download.";
   setStep(3);
 
-  // Optional: smooth scroll into view
   try {
     downloadSection?.scrollIntoView({ behavior: "smooth", block: "center" });
-  } catch (e) {
-    /* no-op */
-  }
-
+  } catch {}
   console.log("✅ Download ready:", url);
 }
 
@@ -478,9 +435,7 @@ function startSSE(jobId) {
         if (noteEl) noteEl.textContent = "Error";
       }
     };
-  } catch {
-    /* noop */
-  }
+  } catch {}
 }
 
 function showError(msg) {
@@ -489,6 +444,7 @@ function showError(msg) {
   if (msgEl) msgEl.textContent = String(msg || "Something went wrong.");
   if (box) box.style.display = "";
 }
+
 function hideError() {
   const box = $("errorContainer");
   if (box) box.style.display = "none";
@@ -496,8 +452,7 @@ function hideError() {
 
 document.addEventListener("DOMContentLoaded", () => {
   wireUpload();
-  wireProviders();
   wireCheckout();
+  wireProviderSelection(); // ✅ Added
   calcTotals();
-  resumeIfPaid();
 });

@@ -2,7 +2,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from uuid import uuid4
-
 from app.utils.s3_utils import generate_presigned_upload_url
 from app.db import SessionLocal
 from app import repo
@@ -13,12 +12,12 @@ MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024  # 2GB
 FREE_TIER_BYTES = 50 * 1024 * 1024       # 50MB
 MAX_DURATION_SEC = 20 * 60               # 20 minutes
 
+
 class UploadRequest(BaseModel):
     filename: str
     size_bytes: int
     content_type: str
     duration_sec: float
-    email: str
 
 
 @router.post("/upload")
@@ -37,11 +36,9 @@ async def upload_file(req: UploadRequest):
 
     # 🆓 Assign tiers
     if req.size_bytes <= FREE_TIER_BYTES:
-        # Free tier (<50 MB) → mark unpaid (-1)
         price_cents = -1
         tier_label = "free-tier"
     else:
-        # Paid tier (>50 MB) → mark pending payment
         price_cents = 0
         tier_label = "paid-tier"
 
@@ -51,7 +48,7 @@ async def upload_file(req: UploadRequest):
             db=db,
             upload_id=upload_id,
             filename=req.filename,
-            email=req.email,
+            email="noemail@mailsized.com",  # placeholder; replaced in /api/pay
             provider="pending",
             size_bytes=req.size_bytes,
             duration_sec=req.duration_sec,

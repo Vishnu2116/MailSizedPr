@@ -1,8 +1,10 @@
+# app/routes/stripe_webhook.py
 from fastapi import APIRouter, Request, Header, HTTPException
 import stripe
 import os
 from app.db import SessionLocal
 from app import repo
+from app.utils.redis_utils import enqueue_job   # ✅ new import
 
 router = APIRouter()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -30,9 +32,19 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
                 job.status = "queued"
                 db.commit()
 
+                # ✅ Immediately enqueue job into Redis for worker
+                enqueue_job(
+                    upload_id=job.upload_id,
+                    filename=job.filename,
+                    duration=job.duration_sec,
+                    size=job.size_bytes,
+                    provider=job.provider,
+                    email=job.email,
+                    priority=job.priority,
+                )
+
             if token_code:
                 repo.use_token(db, token_code)
-
         finally:
             db.close()
 
