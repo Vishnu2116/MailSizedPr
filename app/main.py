@@ -4,6 +4,8 @@ from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSO
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pathlib import Path
 from app.db import SessionLocal
@@ -15,7 +17,16 @@ import os
 # ────────────────────────────────
 # Import Routers
 # ────────────────────────────────
-from app.routes import upload, pay, stripe_webhook, devtest, download, update_email
+from app.routes import (
+    upload,
+    pay,
+    stripe_webhook,
+    devtest,
+    download,
+    update_email,
+    admin_auth,
+    admin,
+)
 
 # ────────────────────────────────
 # Initialize FastAPI
@@ -31,6 +42,7 @@ def healthz():
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
+ADMIN_PORTAL_DIR = BASE_DIR / "admin_portal"
 
 env = Environment(
     loader=FileSystemLoader(str(TEMPLATES_DIR)),
@@ -53,9 +65,22 @@ app.add_middleware(
 )
 
 # ────────────────────────────────
+# Session Middleware (for Admin Login)
+# ────────────────────────────────
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "supersecretkey"),
+    same_site="lax",
+    https_only=False,  # set True in production with HTTPS
+)
+
+# ────────────────────────────────
 # Mount Static Files
 # ────────────────────────────────
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# Mount admin portal static assets (CSS/JS)
+app.mount("/admin_portal", StaticFiles(directory=ADMIN_PORTAL_DIR), name="admin_portal")
 
 # ────────────────────────────────
 # Register Routers
@@ -66,6 +91,8 @@ app.include_router(update_email.router)
 app.include_router(stripe_webhook.router)
 app.include_router(devtest.router)
 app.include_router(download.router)
+app.include_router(admin_auth.router)
+app.include_router(admin.router)
 
 # ────────────────────────────────
 # Template Renderer
@@ -159,7 +186,3 @@ def get_download_url(job_id: str):
         return {"url": job.output_url}
     finally:
         db.close()
-
-# ────────────────────────────────
-# Health Check Endpoint
-# ────────────────────────────────

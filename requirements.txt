@@ -36,3 +36,6 @@ ffmpeg-python==0.2.0
 # ────────────── Optional / Compatibility ──────────────
 typing-extensions>=4.8.0
 python-multipart==0.0.9
+
+
+itsdangerous>=2.1.2

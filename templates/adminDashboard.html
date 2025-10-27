@@ -587,7 +587,8 @@
       </svg>
       MailSized
     </div>
-    <button class="logout-btn" onclick="alert('Logout functionality')">Logout</button>
+    <button class="logout-btn" onclick="handleLogout()">Logout</button>
+
   </nav>
 
   <!-- Main Container -->
@@ -596,7 +597,7 @@
     <aside class="sidebar">
       <a href="#" class="sidebar-link active" onclick="showSection('dashboard')">📊 Dashboard</a>
       <a href="#" class="sidebar-link" onclick="showSection('jobs')">📋 Jobs</a>
-      <a href="#" class="sidebar-link" onclick="showSection('revenue')">💰 Revenue</a>
+      <!-- <a href="#" class="sidebar-link" onclick="showSection('revenue')">💰 Revenue</a> -->
       <a href="#" class="sidebar-link" onclick="showSection('tokens')">🔑 Promo Codes</a>
     </aside>
 
@@ -1031,77 +1032,233 @@
   </div>
 
   <script>
-    // Navigation Functions
+    /* ────────────────────────────────
+       📍 NAVIGATION & UI HANDLERS
+    ──────────────────────────────── */
     function showSection(sectionId) {
-      // Hide all sections
-      document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-      });
-
-      // Show selected section
-      document.getElementById(sectionId).classList.add('active');
-
-      // Update sidebar active state
-      document.querySelectorAll('.sidebar-link').forEach(link => {
-        link.classList.remove('active');
-      });
-      event.target.classList.add('active');
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.getElementById(sectionId).classList.add("active");
+      document.querySelectorAll(".sidebar-link").forEach(link => link.classList.remove("active"));
+      event.target.classList.add("active");
     }
 
-    // Tab Switching
     function switchTab(element, period) {
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      element.classList.add('active');
-      console.log('Switched to:', period);
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      element.classList.add("active");
+      console.log("Switched to:", period);
     }
 
-    // Modal Functions
+    /* ────────────────────────────────
+       📍 MODAL FUNCTIONS
+    ──────────────────────────────── */
     function openJobModal(jobId) {
-      document.getElementById('modalJobId').textContent = jobId;
-      document.getElementById('jobModal').classList.add('show');
+      document.getElementById("modalJobId").textContent = jobId;
+      document.getElementById("jobModal").classList.add("show");
     }
-
     function closeJobModal() {
-      document.getElementById('jobModal').classList.remove('show');
+      document.getElementById("jobModal").classList.remove("show");
     }
-
-    // Close modal on outside click
-    document.getElementById('jobModal').addEventListener('click', function (e) {
-      if (e.target === this) {
-        closeJobModal();
-      }
+    document.getElementById("jobModal").addEventListener("click", e => {
+      if (e.target === e.currentTarget) closeJobModal();
     });
 
-    // Promo Code Generator
-    function generatePromoCode(event) {
+    /* ────────────────────────────────
+       📍 TOKEN COPY HELPER
+    ──────────────────────────────── */
+    function copyToken() {
+      const tokenText = document.getElementById("generatedToken").textContent;
+      navigator.clipboard
+        .writeText(tokenText)
+        .then(() => alert("Token copied to clipboard!"))
+        .catch(() => alert("Failed to copy token"));
+    }
+
+    /* ────────────────────────────────
+       📍 LIVE ADMIN DASHBOARD DATA
+    ──────────────────────────────── */
+    const API_BASE = window.location.origin;
+
+    // === Summary ===
+    async function loadSummary() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/summary`);
+        const data = await res.json();
+
+        const cards = document.querySelectorAll(".stat-card .stat-value");
+        // Order: Total Jobs, Total Revenue, Active Tokens, Completed Jobs
+        cards[0].textContent = data.total_jobs.toLocaleString();
+        cards[1].textContent = `$${data.total_revenue.toLocaleString()}`;
+        cards[2].textContent = data.active_tokens.toLocaleString();
+        cards[3].textContent = data.completed_jobs.toLocaleString();
+      } catch (err) {
+        console.error("❌ Failed to load summary:", err);
+      }
+    }
+
+    // === Jobs ===
+    async function loadJobs() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/jobs`);
+        const jobs = await res.json();
+        const tbody = document.querySelector("#jobs table tbody");
+        tbody.innerHTML = "";
+
+        jobs.forEach(j => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+        <td><a href="#" class="link-text" onclick="openJobModal('${j.id}')">${j.id.slice(0, 8)}</a></td>
+        <td>${j.filename || "-"}</td>
+        <td>${j.email || "-"}</td>
+        <td>${j.created_at}</td>
+        <td><span class="badge ${j.status === "done" ? "completed" : j.status === "queued" ? "pending" : "processing"}">${j.status}</span></td>
+        <td>$${j.price.toFixed(2)}</td>
+      `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("❌ Failed to load jobs:", err);
+      }
+    }
+
+    // === Tokens ===
+    async function loadTokens() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/tokens`);
+        const tokens = await res.json();
+        const tbody = document.querySelector("#tokens table tbody");
+        tbody.innerHTML = "";
+
+        tokens.forEach(t => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+        <td><strong>${t.code}</strong></td>
+        <td><span class="badge ${t.status === "active" ? "unused" : "used"}">${t.status}</span></td>
+        <td>${t.created_at}</td>
+        <td>${t.usage_count}/${t.usage_limit}</td>
+        <td>${t.discount_percent}%</td>
+        <td>-</td>
+      `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("❌ Failed to load tokens:", err);
+      }
+    }
+
+    // === Revenue ===
+    async function loadRevenue() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/revenue`);
+        const data = await res.json();
+
+        // Update revenue stats
+        const revCards = document.querySelectorAll("#revenue .stat-card .stat-value");
+        revCards[0].textContent = `$${data.total.toLocaleString()}`;
+        revCards[1].textContent = `$${data.month.toLocaleString()}`;
+        revCards[2].textContent = `$${data.week.toLocaleString()}`;
+        revCards[3].textContent = `$${data.today.toLocaleString()}`;
+
+        // Update chart
+        const chartContainer = document.querySelector("#revenue .chart-container");
+        chartContainer.innerHTML = "";
+        data.chart.forEach(d => {
+          const bar = document.createElement("div");
+          const height = Math.max((d.revenue / data.total) * 100, 10);
+          bar.className = "chart-bar";
+          bar.style.height = `${height}%`;
+          bar.innerHTML = `
+        <div class="chart-value">$${d.revenue}</div>
+        <div class="chart-label">${d.day}</div>
+      `;
+          chartContainer.appendChild(bar);
+        });
+
+        // Update top promo codes table
+        const tbody = document.querySelector("#revenue table tbody");
+        tbody.innerHTML = "";
+        data.top_tokens.forEach(t => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+        <td><strong>${t.code}</strong></td>
+        <td>-</td>
+        <td>$${t.revenue}</td>
+        <td>-</td>
+      `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("❌ Failed to load revenue:", err);
+      }
+    }
+
+    // === Generate Token (live) ===
+    async function generatePromoCode(event) {
       event.preventDefault();
 
-      const promoName = document.getElementById('promoName').value;
-      const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const generatedCode = `${promoName}-${randomSuffix}`;
+      const name = document.getElementById("promoName").value;
+      const usageLimit = document.getElementById("usageLimit").value;
 
-      document.getElementById('generatedToken').textContent = generatedCode;
-      document.getElementById('tokenDisplay').classList.add('show');
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("usage_limit", usageLimit);
+      formData.append("discount_percent", 100);
+
+      try {
+        const res = await fetch(`${API_BASE}/admin/token/create`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById("generatedToken").textContent = data.code;
+          document.getElementById("tokenDisplay").classList.add("show");
+          loadTokens(); // refresh table
+        } else {
+          alert("Failed to create token");
+        }
+      } catch (err) {
+        alert("Server error while creating token");
+      }
     }
 
-    function copyToken() {
-      const tokenText = document.getElementById('generatedToken').textContent;
-      navigator.clipboard.writeText(tokenText).then(() => {
-        alert('Token copied to clipboard!');
-      }).catch(() => {
-        alert('Failed to copy token');
+    /* ────────────────────────────────
+       📍 INITIALIZATION
+    ──────────────────────────────── */
+    document.addEventListener("DOMContentLoaded", () => {
+      // Default date fields
+      const today = new Date().toISOString().split("T")[0];
+      ["startDate", "endDate", "revStartDate", "revEndDate"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = today;
       });
+
+      // Load live data
+      loadSummary();
+      loadJobs();
+      loadTokens();
+      loadRevenue();
+    });
+    /* ────────────────────────────────
+   📍 LOGOUT FUNCTION
+──────────────────────────────── */
+    async function handleLogout() {
+      try {
+        const res = await fetch(`${API_BASE}/logout`, { method: "GET" });
+        if (res.redirected) {
+          // backend auto-redirects to /login
+          window.location.href = res.url;
+        } else {
+          window.location.href = "/login";
+        }
+      } catch (err) {
+        console.error("❌ Logout failed:", err);
+        alert("Logout failed. Please try again.");
+      }
     }
 
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('startDate').value = today;
-    document.getElementById('endDate').value = today;
-    document.getElementById('revStartDate').value = today;
-    document.getElementById('revEndDate').value = today;
   </script>
+
 </body>
 
 </html>
