@@ -1,0 +1,40 @@
+{
+  "family": "mailsized-worker-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::036820509721:role/mailsized-task-role",
+  "taskRoleArn": "arn:aws:iam::036820509721:role/mailsized-task-role",
+  "containerDefinitions": [
+    {
+      "name": "mailsized-worker",
+      "image": "036820509721.dkr.ecr.us-east-1.amazonaws.com/mailsized-worker:latest",
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mailsized-worker",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "/mailsized/DATABASE_URL" },
+        { "name": "REDIS_URL", "valueFrom": "/mailsized/REDIS_URL" },
+        { "name": "EMAIL_PASSWORD", "valueFrom": "/mailsized/EMAIL_PASSWORD" }
+      ],
+      "environment": [
+        { "name": "APP_ENV", "value": "prod" },
+        { "name": "AWS_REGION", "value": "us-east-1" },
+        { "name": "UPLOADS_BUCKET", "value": "mailsized-uploads-prod" },
+        { "name": "OUTPUTS_BUCKET", "value": "mailsized-outputs-prod" },
+        { "name": "DOWNLOAD_TTL_MIN", "value": "30" },
+        { "name": "EMAIL_SMTP_HOST", "value": "mail.privateemail.com" },
+        { "name": "EMAIL_SMTP_PORT", "value": "587" },
+        { "name": "EMAIL_USERNAME", "value": "contact@mailsized.com" },
+        { "name": "SENDER_EMAIL", "value": "no-reply@mailsized.com" }
+      ]
+    }
+  ]
+}

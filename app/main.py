@@ -22,6 +22,12 @@ from app.routes import upload, pay, stripe_webhook, devtest, download, update_em
 # ────────────────────────────────
 app = FastAPI(title="MailSized API")
 
+# --- add this block ---
+@app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
+def healthz():
+    return {"status": "ok"}
+# --- end add ---
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
@@ -157,6 +163,3 @@ def get_download_url(job_id: str):
 # ────────────────────────────────
 # Health Check Endpoint
 # ────────────────────────────────
-@app.get("/healthz")
-def health_check():
-    return {"status": "ok"}

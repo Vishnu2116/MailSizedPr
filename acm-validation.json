@@ -1,0 +1,33 @@
+{
+  "Comment": "Add ACM certificate validation CNAMEs",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_3b0e6f50512a1d083e7d07763e4f915c.mailsized.com.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          {
+            "Value": "_54e78b661a50554a76d09448dd44e267.xlfgrmvvlj.acm-validations.aws."
+          }
+        ]
+      }
+    },
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_ddbd626fc74cd74537d0d3afa5e3c957.www.mailsized.com.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          {
+            "Value": "_9af2cc70267874dc3878ca900b514e7b.xlfgrmvvlj.acm-validations.aws."
+          }
+        ]
+      }
+    }
+  ]
+}
+
+

@@ -1,43 +1,61 @@
 # worker/worker.py
-
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import time
-import uuid
-import json
-import shutil
+
 import asyncio
-import subprocess
+import json
 import re
+import shutil
+import time
+import ssl
 from pathlib import Path
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 import boto3
 import redis
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from urllib.parse import urlparse
 from app.utils.email_utils import send_output_email
 
-# ─────────────── Load env ───────────────
+# ─────────────── Load environment ───────────────
 load_dotenv()
 
-# ─────────────── Redis ───────────────
-redis_url = urlparse(os.getenv("REDIS_URL"))
-redis_client = redis.Redis(
-    host=redis_url.hostname,
-    port=redis_url.port,
-    db=0
-)
+# ─────────────── Redis (TLS-aware connection) ───────────────
+redis_url = urlparse(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+use_ssl = redis_url.scheme in ("rediss",)
+print(f"🔗 Connecting to Redis at {redis_url.hostname}:{redis_url.port} (SSL={use_ssl})")
 
-# ─────────────── AWS ───────────────
+try:
+    redis_client = redis.Redis(
+        host=redis_url.hostname,
+        port=redis_url.port or 6379,
+        db=0,
+        ssl=use_ssl,
+        ssl_cert_reqs=ssl.CERT_NONE,  # Valkey uses managed certificates
+        socket_connect_timeout=5,
+        socket_timeout=10,
+        retry_on_timeout=True,
+    )
+    redis_client.ping()
+    print("✅ Redis connection successful!")
+except Exception as e:
+    print(f"❌ Redis connection failed: {e}")
+    redis_client = None
+
+# ─────────────── AWS Clients ───────────────
 s3 = boto3.client("s3")
 UPLOAD_BUCKET = os.getenv("UPLOADS_BUCKET")
 OUTPUT_BUCKET = os.getenv("OUTPUTS_BUCKET")
 
 # ─────────────── PostgreSQL ───────────────
 DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+
+def get_db_conn():
+    """Always return a fresh DB connection (for long jobs)."""
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
 
 # ─────────────── Folders ───────────────
 WORK_DIR = Path("tmp")
@@ -61,7 +79,7 @@ def _preexec_ulimits():
 
 def percent_from_out_time_ms(line: str, duration: float) -> float:
     """Parse FFmpeg progress lines for % completion."""
-    m = re.match(r"out_time_ms=(\\d+)", line.strip())
+    m = re.match(r"out_time_ms=(\d+)", line.strip())
     if m and duration > 0:
         ms = int(m.group(1))
         return min(99.0, (ms / 1_000_000.0) / duration * 100.0)
@@ -94,20 +112,21 @@ async def compress_video(job: dict):
     provider = job["provider"]
     priority = job.get("priority", False)
 
-    # ✅ Always try to fetch real email from DB if missing
+    # ✅ Fetch email from DB if missing
     email = job.get("email") or ""
     if not email:
         try:
-            with conn.cursor() as cur:
+            db_conn = get_db_conn()
+            with db_conn.cursor() as cur:
                 cur.execute("SELECT email FROM jobs WHERE upload_id=%s", (upload_id,))
                 row = cur.fetchone()
                 if row and row.get("email"):
                     email = row["email"]
                     print(f"📧 Retrieved email from DB: {email}")
+            db_conn.close()
         except Exception as e:
             print(f"⚠️ Failed to fetch email from DB: {e}")
 
-    # Final fallback
     if not email:
         email = "noemail@mailsized.com"
 
@@ -122,10 +141,10 @@ async def compress_video(job: dict):
     input_path = WORK_DIR / f"{upload_id}_input.mp4"
     output_path = WORK_DIR / f"{upload_id}_output.mp4"
 
-    print(f"🎞️ Compressing {input_key} to {v_kbps} kbps, cap {cap}")
+    print(f"🎞️ Compressing {input_key} → {v_kbps} kbps, cap {cap}px")
 
     try:
-        # ✅ Download input from S3 uploads bucket
+        # ✅ Download input from S3
         s3.download_file(UPLOAD_BUCKET, input_key, str(input_path))
 
         vf = f"scale='min({cap},iw)':'-2'"
@@ -162,7 +181,7 @@ async def compress_video(job: dict):
                 "-loglevel", "error",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                preexec_fn=_preexec_ulimits
+                preexec_fn=_preexec_ulimits,
             )
             while True:
                 line = await proc.stdout.readline()
@@ -174,36 +193,41 @@ async def compress_video(job: dict):
 
             await proc.wait()
 
-        # ✅ Upload output to outputs bucket
+        # ✅ Upload output to S3
         s3.upload_file(str(output_path), OUTPUT_BUCKET, output_key)
 
-        # ✅ Generate 24-hour presigned URL for secure public access
+        # ✅ Generate 24-hour presigned URL
         expiry_seconds = 24 * 3600
         download_url = s3.generate_presigned_url(
             "get_object",
             Params={"Bucket": OUTPUT_BUCKET, "Key": output_key},
-            ExpiresIn=expiry_seconds
+            ExpiresIn=expiry_seconds,
         )
 
-        # ✅ Update DB with presigned URL
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE jobs
-                SET status='done',
-                    progress=100,
-                    output_path=%s,
-                    output_url=%s,
-                    completed_at=NOW()
-                WHERE upload_id=%s
-                """,
-                (output_key, download_url, upload_id),
-            )
-            conn.commit()
+        # ✅ Update DB
+        try:
+            db_conn = get_db_conn()
+            with db_conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE jobs
+                    SET status='done',
+                        progress=100,
+                        output_path=%s,
+                        output_url=%s,
+                        completed_at=NOW()
+                    WHERE upload_id=%s
+                    """,
+                    (output_key, download_url, upload_id),
+                )
+                db_conn.commit()
+            db_conn.close()
+        except Exception as e:
+            print(f"⚠️ Failed to update DB after compression: {e}")
 
         print(f"✅ Job {upload_id} completed and uploaded to {OUTPUT_BUCKET}")
 
-        # ✅ Send email notification (SMTP/Mailgun)
+        # ✅ Send completion email
         if email and "@" in email:
             try:
                 send_output_email(email, download_url, filename)
@@ -212,17 +236,43 @@ async def compress_video(job: dict):
 
     except Exception as e:
         print(f"❌ Compression failed: {e}")
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE jobs SET status='error', error=%s WHERE upload_id=%s",
-                (str(e), upload_id)
-            )
-            conn.commit()
+        try:
+            db_conn = get_db_conn()
+            with db_conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE jobs SET status='error', error=%s WHERE upload_id=%s",
+                    (str(e), upload_id),
+                )
+                db_conn.commit()
+            db_conn.close()
+        except Exception as db_err:
+            print(f"⚠️ Failed to record error in DB: {db_err}")
+
+    finally:
+        # ─────────────── Cleanup ───────────────
+        try:
+            if input_path.exists():
+                input_path.unlink()
+            if output_path.exists():
+                output_path.unlink()
+            now = time.time()
+            for f in WORK_DIR.iterdir():
+                try:
+                    if f.is_file() and (now - f.stat().st_mtime > 900):
+                        f.unlink()
+                except Exception as inner_err:
+                    print(f"⚠️ Skipping tmp cleanup for {f.name}: {inner_err}")
+        except Exception as e:
+            print(f"⚠️ Final cleanup failed: {e}")
 
 
 # ─────────────── Worker Main Loop ───────────────
 async def main():
     print("🚀 Worker started...")
+    if not redis_client:
+        print("❌ No Redis client available — exiting.")
+        return
+
     while True:
         try:
             job_data = redis_client.blpop("mailsized_jobs", timeout=5)

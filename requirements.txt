@@ -1,0 +1,38 @@
+# ────────────── Core Web Framework ──────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+gunicorn==22.0.0
+
+# ────────────── Database ──────────────
+SQLAlchemy==2.0.35
+psycopg2-binary==2.9.9
+
+# ────────────── Background Queue & Cache ──────────────
+redis==5.0.8
+
+# ────────────── Cloud & Storage ──────────────
+boto3==1.35.40
+python-dotenv==1.0.1
+
+# ────────────── Payments ──────────────
+stripe==10.10.0
+
+# ────────────── Email & HTTP ──────────────
+requests==2.32.3
+email-validator==2.2.0
+jinja2==3.1.4
+
+# ────────────── Utilities ──────────────
+pydantic==2.8.2
+pydantic-settings==2.3.4
+
+# ────────────── Async & Worker ──────────────
+aiofiles==24.1.0
+asyncio==3.4.3
+
+# ────────────── Multimedia / FFmpeg ──────────────
+ffmpeg-python==0.2.0
+
+# ────────────── Optional / Compatibility ──────────────
+typing-extensions>=4.8.0
+python-multipart==0.0.9

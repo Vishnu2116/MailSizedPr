@@ -1,3 +1,4 @@
+// ────────────── Helpers ──────────────
 const $ = (id) => document.getElementById(id);
 const qs = (sel, root = document) => root.querySelector(sel);
 const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -28,6 +29,7 @@ function setStep(active) {
   steps.forEach((n, i) => n.classList.toggle("active", i <= active));
 }
 
+// ────────────── Pricing Constants ──────────────
 const BYTES_MB = 1024 * 1024;
 const T1_MAX = 500 * BYTES_MB;
 const T2_MAX = 1024 * BYTES_MB;
@@ -38,6 +40,7 @@ const PRICE_MATRIX = {
 };
 const UPSALE = { priority: 0.75, transcript: 1.5 };
 
+// ────────────── Global State ──────────────
 const state = {
   file: null,
   uploadId: null,
@@ -56,6 +59,7 @@ const state = {
   },
 };
 
+// ────────────── Pricing Calculation ──────────────
 function calcTotals() {
   const baseEl = $("basePrice");
   const priEl = $("priorityPrice");
@@ -103,13 +107,13 @@ function calcTotals() {
       2
     )})`;
 
-  // Highlight totals by provider in the small "Totals" table
   ["gmail", "outlook", "other"].forEach((prov) => {
     const el = $(`ptTotal${prov.charAt(0).toUpperCase() + prov.slice(1)}`);
     if (el) el.style.fontWeight = prov === provider ? "700" : "400";
   });
 }
 
+// ────────────── Upload Handling ──────────────
 function wireUpload() {
   const uploadArea = $("uploadArea");
   const fileInput = $("fileInput");
@@ -152,6 +156,7 @@ function wireUpload() {
   });
 }
 
+// ────────────── Provider Selection ──────────────
 function wireProviderSelection() {
   const providerButtons = qsa(".provider-card");
   if (!providerButtons.length) return;
@@ -164,7 +169,6 @@ function wireProviderSelection() {
       const provider = btn.dataset.provider || "gmail";
       state.provider = provider;
 
-      // Highlight active provider column in pricing table
       qsa("[data-col]").forEach((el) => {
         el.style.background =
           el.getAttribute("data-col") === provider ? "#eef6ff" : "";
@@ -177,6 +181,7 @@ function wireProviderSelection() {
   });
 }
 
+// ────────────── Upload Progress ──────────────
 function setUploadProgress(pct, note = "Uploading…") {
   const box = $("uploadProgress");
   const fill = $("uploadFill");
@@ -192,6 +197,7 @@ function setUploadProgress(pct, note = "Uploading…") {
   }
 }
 
+// ────────────── Upload File Handler ──────────────
 async function handleFile(file) {
   state.file = file;
 
@@ -243,6 +249,7 @@ async function handleFile(file) {
   calcTotals();
 }
 
+// ────────────── Misc Helpers ──────────────
 function validEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");
 }
@@ -259,6 +266,7 @@ async function syncEmail(uploadId, email) {
   }
 }
 
+// ────────────── Checkout Flow ──────────────
 function wireCheckout() {
   const btn = $("processButton");
   if (!btn) return;
@@ -286,6 +294,7 @@ function wireCheckout() {
       transcript: !!$("transcript")?.checked,
     };
 
+    // DEVTEST coupon
     if (coupon.toUpperCase() === "DEVTEST") {
       try {
         const res = await fetch("/devtest", {
@@ -307,6 +316,7 @@ function wireCheckout() {
       return;
     }
 
+    // Free tier
     if (state.sizeBytes <= 50 * 1024 * 1024) {
       try {
         const res = await fetch("/devtest", {
@@ -330,6 +340,7 @@ function wireCheckout() {
       return;
     }
 
+    // Paid path
     const payload = {
       file_key: state.uploadId,
       provider: state.provider,
@@ -369,6 +380,7 @@ function wireCheckout() {
   });
 }
 
+// ────────────── SSE Progress + Download ──────────────
 function revealDownload(url) {
   const dlLink = $("downloadLink");
   const downloadSection = $("downloadSection");
@@ -438,6 +450,7 @@ function startSSE(jobId) {
   } catch {}
 }
 
+// ────────────── UI Helpers ──────────────
 function showError(msg) {
   const box = $("errorContainer");
   const msgEl = $("errorMessage");
@@ -450,9 +463,23 @@ function hideError() {
   if (box) box.style.display = "none";
 }
 
+// ────────────── Auto-resume After Stripe Success ──────────────
+function checkStripeSuccess() {
+  const params = new URLSearchParams(window.location.search);
+  const uploadId = params.get("upload_id");
+  if (params.get("success") && uploadId) {
+    console.log("✅ Stripe success redirect detected:", uploadId);
+    setStep(2);
+    $("postPaySection").style.display = "";
+    startSSE(uploadId);
+  }
+}
+
+// ────────────── Init ──────────────
 document.addEventListener("DOMContentLoaded", () => {
   wireUpload();
   wireCheckout();
-  wireProviderSelection(); // ✅ Added
+  wireProviderSelection();
   calcTotals();
+  checkStripeSuccess(); // ✅ auto-start if returned from Stripe
 });

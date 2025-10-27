@@ -1,0 +1,28 @@
+# ──────────────────────────────
+# MailSized API (FastAPI + Admin)
+# ──────────────────────────────
+FROM python:3.12-slim AS base
+
+# Prevent Python from writing pyc files / buffering logs
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg build-essential libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy project files
+COPY . /app
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install gunicorn uvicorn
+
+# Port FastAPI listens on
+EXPOSE 8000
+
+# Run Gunicorn with Uvicorn workers
+CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "120"]
