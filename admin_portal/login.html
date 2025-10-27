@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailSized Admin Login</title>
+  <link rel="stylesheet" href="/admin_portal/login.css" />
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <h2>MailSized Admin</h2>
+        <p>Enter your credentials to access the dashboard</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <div class="input-wrapper">
+            <input type="email" id="email" required placeholder=" " />
+            <label for="email">Email Address</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="input-wrapper password-wrapper">
+            <input type="password" id="password" required placeholder=" " />
+            <label for="password">Password</label>
+            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+              <span class="eye-icon"></span>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-loader"></span>
+        </button>
+      </form>
+
+      <div class="success-message" id="successMessage">
+        <div class="success-icon">✓</div>
+        <h3>Login Successful!</h3>
+        <p>Redirecting to dashboard...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin_portal/login.js"></script>
+</body>
+
+</html>
