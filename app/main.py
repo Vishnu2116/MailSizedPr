@@ -106,7 +106,27 @@ def render(template_name: str, request: Request, **context):
 # ────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return FileResponse(STATIC_DIR / "index.html")
+    # Pull AdSense + Analytics info from env
+    enable_adsense = os.getenv("ENABLE_ADSENSE", "0") == "1"
+    adsense_client_id = os.getenv("ADSENSE_CLIENT_ID", "")
+    adsense_sidebar_slot = os.getenv("ADSENSE_SIDEBAR_SLOT", "")
+    ga_id = os.getenv("GA_MEASUREMENT_ID", "")
+
+    adsense_tag = ""
+    if enable_adsense and adsense_client_id:
+        adsense_tag = f'''
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{adsense_client_id}" crossorigin="anonymous"></script>
+        '''
+
+    template = env.get_template("index.html")
+    return HTMLResponse(template.render(
+        adsense_tag=adsense_tag,
+        adsense_client_id=f"ca-{adsense_client_id}",
+        adsense_sidebar_slot=adsense_sidebar_slot,
+        ga_measurement_id=ga_id,
+        paid=False,
+        job_id="",
+    ))
 
 @app.get("/how-it-works", response_class=HTMLResponse)
 def how_it_works(request: Request):

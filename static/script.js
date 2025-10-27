@@ -1,4 +1,4 @@
-// ────────────── Helpers ──────────────
+// ────────────── Helpers (define these first) ──────────────
 const $ = (id) => document.getElementById(id);
 const qs = (sel, root = document) => root.querySelector(sel);
 const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -27,6 +27,35 @@ function setStep(active) {
     Boolean
   );
   steps.forEach((n, i) => n.classList.toggle("active", i <= active));
+}
+
+// ────────────── Stripe Return Handler (same-tab, safe) ──────────────
+function handleStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const jobId = params.get("upload_id");
+  const isPaid = params.get("paid") === "1";
+  const isCancel = params.get("cancel") === "1";
+
+  if (isPaid && jobId) {
+    console.log("🔁 Payment success. Starting compression for:", jobId);
+    const uploadSection = $("uploadSection");
+    const post = $("postPaySection");
+    if (uploadSection) uploadSection.classList.add("hidden");
+    if (post) post.style.display = "";
+    setStep(2);
+    startSSE(jobId);
+    // Clean URL to avoid re-trigger on refresh
+    window.history.replaceState({}, document.title, "/");
+    return;
+  }
+
+  if (isCancel) {
+    console.log(
+      "↩️ Payment canceled. Back on main page, no processing started."
+    );
+    setStep(1);
+    window.history.replaceState({}, document.title, "/");
+  }
 }
 
 // ────────────── Pricing Constants ──────────────
@@ -233,6 +262,8 @@ async function handleFile(file) {
   if (!data.ok) return showError(data.detail || "Upload request failed");
 
   state.uploadId = data.upload_id;
+  sessionStorage.setItem("upload_id", data.upload_id);
+
   state.sizeBytes = file.size;
   state.durationSec = dur;
 
@@ -248,7 +279,6 @@ async function handleFile(file) {
   setStep(1);
   calcTotals();
 }
-
 // ────────────── Misc Helpers ──────────────
 function validEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");
@@ -477,9 +507,12 @@ function checkStripeSuccess() {
 
 // ────────────── Init ──────────────
 document.addEventListener("DOMContentLoaded", () => {
+  handleStripeReturn(); // ✅ run only after DOM is ready
   wireUpload();
   wireCheckout();
   wireProviderSelection();
   calcTotals();
-  checkStripeSuccess(); // ✅ auto-start if returned from Stripe
 });
+// window.addEventListener("beforeunload", () => {
+//   sessionStorage.clear(); // 🔄 Start fresh on reload
+// });

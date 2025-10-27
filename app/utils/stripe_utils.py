@@ -4,13 +4,15 @@ import os
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
-
 def create_checkout_session(upload_id: str, email: str, amount_cents: int, token_obj=None):
-    """Create a Stripe Checkout Session with optional discount."""
-    success_url = f"{os.getenv('PUBLIC_BASE_URL')}/success?upload_id={upload_id}"
-    cancel_url = f"{os.getenv('PUBLIC_BASE_URL')}/?cancel=1"
+    BASE = os.getenv("PUBLIC_BASE_URL", "https://mailsized.com").rstrip("/")
+    if not BASE:
+        raise RuntimeError("PUBLIC_BASE_URL is not set")
 
-    # ───── Apply token discount if available ─────
+    # ✅ include upload_id so the front-end knows what to resume
+    success_url = f"{BASE}/?paid=1&upload_id={upload_id}"
+    cancel_url  = f"{BASE}/?cancel=1&upload_id={upload_id}"
+
     discount_percent = 0
     token_code = ""
     if token_obj:
@@ -23,10 +25,10 @@ def create_checkout_session(upload_id: str, email: str, amount_cents: int, token
     discounted_amount = int(amount_cents * (1 - discount_percent / 100))
     if discounted_amount < 0:
         discounted_amount = 0
+    # Stripe minimum charge guard (USD 50¢)
+    if 0 < discounted_amount < 50:
+        discounted_amount = 50
 
-    print(f"🎟️ Discount applied: {discount_percent}% → Final charge ${discounted_amount / 100:.2f}")
-
-    # ───── Create Stripe Checkout Session ─────
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="payment",
@@ -47,6 +49,4 @@ def create_checkout_session(upload_id: str, email: str, amount_cents: int, token
         success_url=success_url,
         cancel_url=cancel_url,
     )
-
-    print(f"✅ Stripe session created: {session.id} for ${discounted_amount / 100:.2f}")
     return session
