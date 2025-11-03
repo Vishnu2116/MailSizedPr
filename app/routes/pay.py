@@ -76,14 +76,11 @@ async def handle_payment(req: PayRequest):
 
         db.commit()  # persist everything before Stripe call
 
-        # 4️⃣ Handle 100% free token
+        # 4️⃣ Handle 100% free token (skip Stripe, start processing directly)
         if token and int(getattr(token, "discount_percent", 0) or 0) == 100:
             try:
                 repo.use_token(db, token.code)
-                try:
-                    job.status = "queued"
-                except Exception:
-                    pass
+                job.status = "queued"
                 db.commit()
 
                 enqueue_job(
@@ -96,7 +93,14 @@ async def handle_payment(req: PayRequest):
                     priority=job.priority,
                 )
 
-                return {"ok": True, "job_id": job.id}
+                # ✅ Return signal for frontend to skip Stripe and show progress bar
+                return {
+                    "ok": True,
+                    "free": True,
+                    "upload_id": job.upload_id,
+                    "message": "100% discount token applied — processing started.",
+                }
+
             except Exception as e:
                 db.rollback()
                 raise HTTPException(status_code=500, detail=f"Free token error: {e}")

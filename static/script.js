@@ -402,12 +402,18 @@ function wireCheckout() {
       return showError("Unexpected server response.");
     }
 
-    // --- Handle response paths ---
-    if (data?.ok && data?.free && state.uploadId) {
-      console.log("🎟️ 100% discount token applied → starting processing");
+    // --- Handle 100% free token path ---
+    if (data?.ok && (data?.free || data?.message?.includes("100%"))) {
+      const id = data?.upload_id || state.uploadId || data?.job_id;
+      if (!id) return showError("No upload ID found for free token job.");
+
+      console.log(
+        "🎟️ 100% discount token applied → starting compression for:",
+        id
+      );
       setStep(2);
       $("postPaySection").style.display = "";
-      startSSE(state.uploadId);
+      startSSE(id);
       return;
     }
 
