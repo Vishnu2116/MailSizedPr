@@ -402,11 +402,22 @@ function wireCheckout() {
       return showError("Unexpected server response.");
     }
 
-    const url = data?.url || data?.checkout_url;
-    if (!url) return showError("Checkout could not be created.");
+    // --- Handle response paths ---
+    if (data?.ok && data?.free && state.uploadId) {
+      console.log("🎟️ 100% discount token applied → starting processing");
+      setStep(2);
+      $("postPaySection").style.display = "";
+      startSSE(state.uploadId);
+      return;
+    }
 
-    setStep(1);
-    window.location.href = url;
+    const url = data?.url || data?.checkout_url;
+    if (url) {
+      setStep(1);
+      window.location.href = url;
+    } else {
+      showError("Checkout could not be created.");
+    }
   });
 }
 
@@ -419,10 +430,49 @@ function revealDownload(url) {
 
   if (!url) return showError("Download link unavailable. Please refresh.");
 
+  // Extract filename
+  const filename =
+    decodeURIComponent(url.split("/").pop().split("?")[0]) ||
+    "compressed-video.mp4";
+
   if (dlLink) {
-    dlLink.href = url;
-    dlLink.target = "_blank";
-    dlLink.download = "";
+    dlLink.href = "#";
+    dlLink.removeAttribute("target");
+    dlLink.textContent = `Download`;
+
+    dlLink.onclick = async (e) => {
+      e.preventDefault();
+
+      try {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+          console.log("📱 Mobile detected → using blob download");
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Fetch failed");
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(blobUrl);
+        } else {
+          // Desktop → simple direct download (faster)
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+      } catch (err) {
+        console.error("Download error:", err);
+        window.open(url, "_blank"); // fallback
+      }
+    };
   }
 
   if (downloadSection) downloadSection.style.display = "block";

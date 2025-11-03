@@ -191,6 +191,23 @@ async def compress_video(job: dict):
                 if pct:
                     print(f"Progress: {pct:.2f}%")
 
+                    # ✅ Update DB every few percent
+                    try:
+                        db_conn = get_db_conn()
+                        with db_conn.cursor() as cur:
+                            cur.execute(
+                                "UPDATE jobs SET progress = %s, status = 'processing' WHERE upload_id = %s",
+                                (pct, upload_id),
+                            )
+                            db_conn.commit()
+                        db_conn.close()
+                    except Exception as e:
+                        print(f"⚠️ Failed to update progress in DB: {e}")
+
+                    # ✅ Optional: small throttle so DB isn’t spammed
+                    await asyncio.sleep(1)
+
+
             await proc.wait()
 
         # ✅ Upload output to S3
