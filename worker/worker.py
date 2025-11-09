@@ -63,7 +63,7 @@ WORK_DIR.mkdir(exist_ok=True)
 
 # ─────────────── FFmpeg ───────────────
 FFMPEG_BIN = shutil.which("ffmpeg") or "ffmpeg"
-FFMPEG_LOCK = asyncio.Lock()
+FFMPEG_LOCK = asyncio.Lock()  # kept for compatibility, not used now
 
 
 def _preexec_ulimits():
@@ -173,42 +173,41 @@ async def compress_video(job: dict):
             str(output_path),
         ]
 
-        async with FFMPEG_LOCK:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                "-progress", "pipe:1",
-                "-nostats",
-                "-loglevel", "error",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                preexec_fn=_preexec_ulimits,
-            )
-            while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                pct = percent_from_out_time_ms(line.decode(), duration)
-                if pct:
-                    print(f"Progress: {pct:.2f}%")
+        # ⚡ Removed FFMPEG_LOCK → allows parallel compressions
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            "-progress", "pipe:1",
+            "-nostats",
+            "-loglevel", "error",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            preexec_fn=_preexec_ulimits,
+        )
 
-                    # ✅ Update DB every few percent
-                    try:
-                        db_conn = get_db_conn()
-                        with db_conn.cursor() as cur:
-                            cur.execute(
-                                "UPDATE jobs SET progress = %s, status = 'processing' WHERE upload_id = %s",
-                                (pct, upload_id),
-                            )
-                            db_conn.commit()
-                        db_conn.close()
-                    except Exception as e:
-                        print(f"⚠️ Failed to update progress in DB: {e}")
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                break
+            pct = percent_from_out_time_ms(line.decode(), duration)
+            if pct:
+                print(f"Progress: {pct:.2f}%")
 
-                    # ✅ Optional: small throttle so DB isn’t spammed
-                    await asyncio.sleep(1)
+                # ✅ Update DB every few percent
+                try:
+                    db_conn = get_db_conn()
+                    with db_conn.cursor() as cur:
+                        cur.execute(
+                            "UPDATE jobs SET progress = %s, status = 'processing' WHERE upload_id = %s",
+                            (pct, upload_id),
+                        )
+                        db_conn.commit()
+                    db_conn.close()
+                except Exception as e:
+                    print(f"⚠️ Failed to update progress in DB: {e}")
 
+                await asyncio.sleep(1)
 
-            await proc.wait()
+        await proc.wait()
 
         # ✅ Upload output to S3
         s3.upload_file(str(output_path), OUTPUT_BUCKET, output_key)
@@ -283,24 +282,58 @@ async def compress_video(job: dict):
             print(f"⚠️ Final cleanup failed: {e}")
 
 
-# ─────────────── Worker Main Loop ───────────────
-async def main():
-    print("🚀 Worker started...")
+# ─────────────── Worker Main Loop (Concurrent Version) ───────────────
+import asyncio
+
+MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "2"))
+
+async def worker_task(job):
+    """Run one compression job safely inside a task."""
+    try:
+        await compress_video(job)
+    except Exception as e:
+        print(f"❌ Error in worker_task: {e}")
+
+async def queue_listener():
+    """Continuously listen to Redis and launch multiple concurrent FFmpeg jobs."""
+    print(f"🚀 Worker started with concurrency = {MAX_CONCURRENT_JOBS}")
+
     if not redis_client:
         print("❌ No Redis client available — exiting.")
         return
 
+    sem = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+    active_tasks = set()
+
     while True:
         try:
-            job_data = redis_client.blpop("mailsized_jobs", timeout=5)
-            if job_data:
-                _, payload = job_data
-                job = json.loads(payload)
-                await compress_video(job)
-        except Exception as e:
-            print(f"Worker loop error: {e}")
-        await asyncio.sleep(1)
+            if len(active_tasks) < MAX_CONCURRENT_JOBS:
+                job_data = redis_client.blpop("mailsized_jobs", timeout=3)
+                if job_data:
+                    _, payload = job_data
+                    job = json.loads(payload)
 
+                    async def handle_job(j):
+                        async with sem:
+                            await worker_task(j)
+
+                    task = asyncio.create_task(handle_job(job))
+                    active_tasks.add(task)
+                    task.add_done_callback(lambda t: active_tasks.discard(t))
+
+            # Cleanup finished tasks periodically
+            done = [t for t in active_tasks if t.done()]
+            for t in done:
+                active_tasks.discard(t)
+
+            await asyncio.sleep(0.5)
+
+        except Exception as e:
+            print(f"⚠️ Worker loop error: {e}")
+            await asyncio.sleep(2)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(queue_listener())
+    except KeyboardInterrupt:
+        print("🛑 Worker stopped manually.")
