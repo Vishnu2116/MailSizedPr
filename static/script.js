@@ -227,14 +227,22 @@ function setUploadProgress(pct, note = "Uploading…") {
 }
 
 // ────────────── Upload File Handler ──────────────
+// ────────────── Upload File Handler (with progress + cancel) ──────────────
 async function handleFile(file) {
   state.file = file;
+  const cancelBtn = $("cancelUploadBtn");
+  const progressBox = $("uploadProgress");
+
+  // Reset UI
+  if (progressBox) progressBox.style.display = "none";
+  if (cancelBtn) cancelBtn.style.display = "none";
 
   setTextSafe($("fileName"), file.name);
   setTextSafe($("fileSize"), fmtBytes(file.size));
   setTextSafe($("fileDuration"), "probing…");
-  if ($("fileInfo")) $("fileInfo").style.display = "";
+  $("fileInfo").style.display = "";
 
+  // ───── Get duration ─────
   const dur = await new Promise((resolve) => {
     const v = document.createElement("video");
     v.preload = "metadata";
@@ -243,6 +251,7 @@ async function handleFile(file) {
     v.src = URL.createObjectURL(file);
   });
 
+  // ───── Prepare upload ─────
   const email = $("userEmail")?.value?.trim() || "noemail@mailsized.com";
   const payload = {
     filename: file.name,
@@ -252,33 +261,74 @@ async function handleFile(file) {
     email,
   };
 
-  const res = await fetch("/upload", {
+  let res = await fetch("/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-
   const data = await res.json();
-  if (!data.ok) return showError(data.detail || "Upload request failed");
+  if (!data.ok) return showError(data.detail || "Upload request failed.");
 
   state.uploadId = data.upload_id;
   sessionStorage.setItem("upload_id", data.upload_id);
-
   state.sizeBytes = file.size;
   state.durationSec = dur;
 
-  const s3UploadRes = await fetch(data.presigned_url, {
-    method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
-  });
-  if (!s3UploadRes.ok) return showError("Upload to S3 failed.");
+  // ───── Actual PUT upload with progress & cancel ─────
+  const xhr = new XMLHttpRequest();
+  xhr.open("PUT", data.presigned_url, true);
+  xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
 
-  setUploadProgress(100, "Upload complete");
-  setTextSafe($("fileDuration"), fmtDuration(dur));
-  setStep(1);
-  calcTotals();
+  // progress
+  const startTime = Date.now();
+  xhr.upload.onprogress = (e) => {
+    if (!e.lengthComputable) return;
+    const pct = (e.loaded / e.total) * 100;
+    const elapsed = (Date.now() - startTime) / 1000;
+    const speed = e.loaded / elapsed;
+    const remaining = (e.total - e.loaded) / speed;
+    setUploadProgress(
+      pct,
+      `Uploading… ${fmtBytes(speed)}/s, ${fmtDuration(remaining)} left`
+    );
+  };
+
+  // done
+  xhr.onload = async () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      setUploadProgress(100, "✅ Upload complete");
+      cancelBtn.style.display = "none";
+      setTextSafe($("fileDuration"), fmtDuration(dur));
+      setStep(1);
+      calcTotals();
+    } else {
+      showError("Upload failed. Please retry.");
+      cancelBtn.style.display = "none";
+    }
+  };
+
+  // error
+  xhr.onerror = () => {
+    showError("Network error during upload.");
+    cancelBtn.style.display = "none";
+  };
+
+  // cancel button wiring
+  cancelBtn.onclick = () => {
+    try {
+      xhr.abort();
+    } catch {}
+    showError("Upload canceled.");
+    cancelBtn.style.display = "none";
+    setUploadProgress(0, "Upload canceled");
+  };
+
+  // start upload
+  cancelBtn.style.display = "";
+  progressBox.style.display = "";
+  xhr.send(file);
 }
+
 // ────────────── Misc Helpers ──────────────
 function validEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");

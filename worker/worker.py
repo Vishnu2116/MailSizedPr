@@ -32,7 +32,7 @@ try:
         port=redis_url.port or 6379,
         db=0,
         ssl=use_ssl,
-        ssl_cert_reqs=ssl.CERT_NONE,  # Valkey uses managed certificates
+        ssl_cert_reqs=ssl.CERT_NONE,
         socket_connect_timeout=5,
         socket_timeout=10,
         retry_on_timeout=True,
@@ -63,7 +63,6 @@ WORK_DIR.mkdir(exist_ok=True)
 
 # ─────────────── FFmpeg ───────────────
 FFMPEG_BIN = shutil.which("ffmpeg") or "ffmpeg"
-FFMPEG_LOCK = asyncio.Lock()  # kept for compatibility, not used now
 
 
 def _preexec_ulimits():
@@ -71,7 +70,7 @@ def _preexec_ulimits():
     try:
         import resource
         resource.setrlimit(resource.RLIMIT_CPU, (1800, 1800))
-        resource.setrlimit(resource.RLIMIT_AS, (2 * 1024**3, 2 * 1024**3))
+        resource.setrlimit(resource.RLIMIT_AS, (4 * 1024**3, 4 * 1024**3))
         resource.setrlimit(resource.RLIMIT_NOFILE, (512, 512))
     except Exception:
         pass
@@ -150,6 +149,9 @@ async def compress_video(job: dict):
         vf = f"scale='min({cap},iw)':'-2'"
         audio_args = ["-c:a", "aac", "-b:a", "96k", "-ac", "2", "-ar", "44100"]
 
+        # ⚙️ Use all available cores per job for max speed
+        thread_count = max(1, os.cpu_count() or 4)
+
         cmd = [
             FFMPEG_BIN,
             "-y",
@@ -158,12 +160,12 @@ async def compress_video(job: dict):
             "-map", "0:a:0?",
             "-vf", vf,
             "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-profile:v", "main",
-            "-level", "3.1",
+            "-preset", "fast",
+            "-profile:v", "high",
+            "-level", "4.0",
             "-pix_fmt", "yuv420p",
-            "-threads", "1",
-            "-x264-params", "ref=1:bframes=0:rc-lookahead=10",
+            "-threads", str(thread_count),
+            "-x264-params", "bframes=2:ref=2:rc-lookahead=20",
             "-movflags", "+faststart",
             "-max_muxing_queue_size", "9999",
             *audio_args,
@@ -173,7 +175,6 @@ async def compress_video(job: dict):
             str(output_path),
         ]
 
-        # ⚡ Removed FFMPEG_LOCK → allows parallel compressions
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             "-progress", "pipe:1",
@@ -282,10 +283,8 @@ async def compress_video(job: dict):
             print(f"⚠️ Final cleanup failed: {e}")
 
 
-# ─────────────── Worker Main Loop (Concurrent Version) ───────────────
-import asyncio
-
-MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "2"))
+# ─────────────── Worker Main Loop ───────────────
+MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "1"))
 
 async def worker_task(job):
     """Run one compression job safely inside a task."""

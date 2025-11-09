@@ -73,11 +73,19 @@
           </div>
 
           <!-- Upload progress -->
+          <!-- Upload progress -->
           <div class="progress-container" id="uploadProgress" style="display:none; margin-top:12px;">
             <div class="progress-fill" id="uploadFill" style="width:0%;"></div>
             <div class="progress-pct" id="uploadPct">0%</div>
           </div>
           <div class="progress-note" id="uploadNote" style="display:none;">Uploading…</div>
+
+          <!-- Cancel upload button -->
+          <button id="cancelUploadBtn" type="button" class="action-button danger"
+            style="display:none; margin-top:10px; background:#d9534f;">
+            <i class="fas fa-ban"></i> Cancel Upload
+          </button>
+
 
           <!-- Selected file details -->
           <div class="file-info" id="fileInfo" style="display:none;">
